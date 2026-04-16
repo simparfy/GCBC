@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gcbc"
+dynamic = ["version"]
+description = "Good Cop Bad Cop — AI-driven idea investigation framework"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "python-slugify>=8.0",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+    "questionary>=2.0",
+]
+
+[project.scripts]
+gcbc = "gcbc.cli:app"
+
+[tool.hatch.version]
+path = "src/gcbc/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gcbc"]
