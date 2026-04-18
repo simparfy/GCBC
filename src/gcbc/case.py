@@ -62,25 +62,23 @@ def _write_frontmatter(path: Path, meta: dict, body: str) -> None:
     path.write_text(f"---\n{fm}---{body}", encoding="utf-8")
 
 
+def _data_dir() -> Path:
+    """Return ~/.gcbc/ — the root for all GCBC data."""
+    return Path.home() / ".gcbc"
+
+
 def _cases_dir(project_root: Path | None = None) -> Path:
-    """Resolve cases directory from env or default."""
+    """Resolve cases directory. All cases live in ~/.gcbc/cases/."""
     import os
     env = os.environ.get("GCBC_CASES_DIR")
     if env:
         return Path(env)
-    if project_root:
-        return project_root / "cases"
-    return Path.cwd() / "cases"
+    return _data_dir() / "cases"
 
 
-def _data_dir() -> Path:
-    """Return ~/.gcbc/ for AI-internal storage (transcripts, debates)."""
-    return Path.home() / ".gcbc"
-
-
-def _internal_case_dir(slug: str) -> Path:
+def _case_dir(slug: str) -> Path:
     """Return ~/.gcbc/cases/{slug}/, creating it if needed."""
-    d = _data_dir() / "cases" / slug
+    d = _cases_dir() / slug
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -95,16 +93,24 @@ def _project_root() -> Path:
 
 
 def _load_internal_state(slug: str) -> dict:
-    """Load internal state (round_count, debate_attempts) from ~/.gcbc/cases/{slug}/state.json."""
-    state_file = _internal_case_dir(slug) / "state.json"
+    """Load internal state from ~/.gcbc/cases/{slug}/state.json."""
+    defaults = {
+        "round_count": 0,
+        "debate_attempts": 0,
+        "phase": "gc",
+        "gc_rounds": 0,
+        "bc_rounds": 0,
+    }
+    state_file = _case_dir(slug) / "state.json"
     if state_file.exists():
-        return json.loads(state_file.read_text(encoding="utf-8"))
-    return {"round_count": 0, "debate_attempts": 0}
+        stored = json.loads(state_file.read_text(encoding="utf-8"))
+        return {**defaults, **stored}
+    return defaults
 
 
 def _save_internal_state(slug: str, state: dict) -> None:
     """Save internal state to ~/.gcbc/cases/{slug}/state.json."""
-    state_file = _internal_case_dir(slug) / "state.json"
+    state_file = _case_dir(slug) / "state.json"
     state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
@@ -193,20 +199,17 @@ def create_case(cases_dir: Path, title: str, description: str = "") -> tuple[str
     if not description:
         description = title
 
-    # Write user-facing case files (in project)
+    # All case files live in ~/.gcbc/cases/{slug}/
     (case_path / "case.md").write_text(
         templates.case_md(slug, title, description, ts), encoding="utf-8"
     )
     (case_path / "links.md").write_text(
         templates.links_md(title), encoding="utf-8"
     )
-
-    # AI-internal files (in ~/.gcbc/cases/{slug}/)
-    internal = _internal_case_dir(slug)
-    (internal / "interrogation.md").write_text(
+    (case_path / "interrogation.md").write_text(
         templates.interrogation_md(title), encoding="utf-8"
     )
-    (internal / "debate.md").write_text(
+    (case_path / "debate.md").write_text(
         templates.debate_md(title), encoding="utf-8"
     )
 
@@ -259,25 +262,39 @@ def increment_debate_attempts(case_path: Path) -> int:
     return state["debate_attempts"]
 
 
+def set_phase(case_path: Path, phase: str) -> str:
+    """Set the interrogation phase. Valid values: 'gc', 'bc', 'done'. Returns the new phase."""
+    if phase not in ("gc", "bc", "done"):
+        raise CaseError(f"Invalid phase: {phase}. Must be 'gc', 'bc', or 'done'.")
+    meta = load_case_meta(case_path)
+    slug = meta.get("slug", case_path.name)
+    state = _load_internal_state(slug)
+    state["phase"] = phase
+    _save_internal_state(slug, state)
+    return phase
+
+
 def append_to_transcript(case_path: Path, content: str) -> None:
-    """Append content to interrogation.md in ~/.gcbc/."""
+    """Append content to interrogation.md."""
     slug = load_case_meta(case_path).get("slug", case_path.name)
-    f = _internal_case_dir(slug) / "interrogation.md"
+    f = _case_dir(slug) / "interrogation.md"
     with f.open("a", encoding="utf-8") as fh:
         fh.write(f"\n{content}\n")
 
 
 def append_to_debate(case_path: Path, content: str) -> None:
-    """Append content to debate.md in ~/.gcbc/."""
+    """Append content to debate.md."""
     slug = load_case_meta(case_path).get("slug", case_path.name)
-    f = _internal_case_dir(slug) / "debate.md"
+    f = _case_dir(slug) / "debate.md"
     with f.open("a", encoding="utf-8") as fh:
         fh.write(f"\n{content}\n")
 
 
 def append_fact(project_root: Path, statement: str) -> tuple[bool, str]:
-    """Append a fact to the global facts.md. Returns (added, reason)."""
-    facts_file = project_root / "facts.md"
+    """Append a fact to the global facts.md in ~/.gcbc/. Returns (added, reason)."""
+    data_dir = _data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    facts_file = data_dir / "facts.md"
 
     if not facts_file.exists():
         facts_file.write_text(templates.facts_md(), encoding="utf-8")
@@ -344,28 +361,17 @@ def write_verdict(case_path: Path, content: str) -> None:
 
 def read_full_case_context(case_path: Path) -> str:
     """Read all case files into a single tagged context string."""
-    project_root = _project_root()
     parts = []
 
-    # User-facing files (in project)
-    for filename in ["case.md", "links.md", "verdict.md"]:
+    # All case files live in ~/.gcbc/cases/{slug}/
+    for filename in ["case.md", "links.md", "verdict.md", "interrogation.md", "debate.md"]:
         f = case_path / filename
         if f.exists():
             content = f.read_text(encoding="utf-8")
             parts.append(f'<file name="{filename}">\n{content}\n</file>')
 
-    # AI-internal files (in ~/.gcbc/cases/{slug}/)
-    meta = _parse_frontmatter(case_path / "case.md")[0]
-    slug = meta.get("slug", case_path.name)
-    internal = _data_dir() / "cases" / slug
-    for filename in ["interrogation.md", "debate.md"]:
-        f = internal / filename
-        if f.exists():
-            content = f.read_text(encoding="utf-8")
-            parts.append(f'<file name="{filename}">\n{content}\n</file>')
-
-    # Include global facts
-    facts_file = project_root / "facts.md"
+    # Include global facts from ~/.gcbc/facts.md
+    facts_file = _data_dir() / "facts.md"
     if facts_file.exists():
         content = facts_file.read_text(encoding="utf-8")
         parts.append(f'<file name="facts.md" scope="global">\n{content}\n</file>')

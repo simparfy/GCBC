@@ -12,7 +12,9 @@ python -m gcbc.cli status
 ```
 If no active case, stop with error.
 
-Check `round_count`. If less than 3:
+Extract `round_count` from the status JSON.
+
+If `round_count` < 3:
 ```
 Not enough interrogation has been done yet. Run a few more rounds with /interrogate before starting the debate.
 ```
@@ -23,7 +25,7 @@ Load full context:
 python -m gcbc.cli context
 ```
 
-Also read the global facts.md from the project root.
+Also read the global `~/.gcbc/facts.md`.
 
 ### Step 2: Run debate turns
 
@@ -197,7 +199,7 @@ python -m gcbc.cli write-verdict --content "[VERDICT_CONTENT]"
 ```bash
 python -m gcbc.cli increment-debate
 ```
-- Display: "Consensus reached! Verdict written to cases/[slug]/verdict.md"
+- Display: "Consensus reached! Verdict written to ~/.gcbc/cases/[slug]/verdict.md"
 - Show the verdict content
 
 If consensus NOT reached:

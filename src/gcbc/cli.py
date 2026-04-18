@@ -107,6 +107,9 @@ def cmd_status() -> None:
         "status": meta.get("status", ""),
         "round_count": state.get("round_count", 0),
         "debate_attempts": state.get("debate_attempts", 0),
+        "phase": state.get("phase", "gc"),
+        "gc_rounds": state.get("gc_rounds", 0),
+        "bc_rounds": state.get("bc_rounds", 0),
         "created": meta.get("created", ""),
         "updated": meta.get("updated", ""),
         "parent": meta.get("parent"),
@@ -138,6 +141,19 @@ def cmd_increment_debate() -> None:
     active, _ = _require_active()
     new_count = cm.increment_debate_attempts(active)
     _out({"debate_attempts": new_count})
+
+
+@app.command("set-phase")
+def cmd_set_phase(
+    phase: str = typer.Option(..., help="Phase to set: gc, bc, or done"),
+) -> None:
+    """Set the interrogation phase for the active case."""
+    active, _ = _require_active()
+    try:
+        new_phase = cm.set_phase(active, phase)
+        _out({"phase": new_phase})
+    except cm.CaseError as e:
+        _err(str(e))
 
 
 @app.command("append-transcript")
@@ -217,7 +233,7 @@ def cmd_save_questions() -> None:
     except json.JSONDecodeError as e:
         _err(f"Invalid JSON: {e}")
     slug = meta.get("slug", active.name)
-    internal = cm._internal_case_dir(slug)
+    internal = cm._case_dir(slug)
     qfile = internal / "questions.json"
     qfile.write_text(data, encoding="utf-8")
     count = len(parsed.get("questions", []))
@@ -245,7 +261,7 @@ def cmd_read_answers() -> None:
     """Read and consume saved interactive answers. Deletes answers.json after reading."""
     active, meta = _require_active()
     slug = meta.get("slug", active.name)
-    afile = cm._internal_case_dir(slug) / "answers.json"
+    afile = cm._case_dir(slug) / "answers.json"
     if not afile.exists():
         _out({"has_answers": False})
         return
@@ -416,11 +432,12 @@ def cmd_uninstall() -> None:
     if res.returncode != 0:
         _err(f"pip uninstall failed: {res.stderr.strip()}")
 
+    data_dir = cm._data_dir()
     _out({
         "uninstalled": True,
         "note": f"The gcbc CLI has been removed. "
-                f"Case data remains in {install_dir / 'cases'}. "
-                f"To fully remove, delete {install_dir}",
+                f"Case data remains in {data_dir}. "
+                f"To fully remove, delete {install_dir} and {data_dir}",
     })
 
 

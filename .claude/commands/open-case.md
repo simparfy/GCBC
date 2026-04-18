@@ -1,6 +1,6 @@
 # /open-case — Open a new GCBC investigation case
 
-Open a new case in the GCBC system. Creates the case directory and all tracking files, then immediately runs the first interrogation round with both Good Cop and Bad Cop.
+Open a new case in the GCBC system. Creates the case directory and all tracking files, then immediately runs the first interrogation round (Good Cop questions, then Bad Cop challenges).
 
 ## Arguments
 
@@ -78,55 +78,21 @@ Parse JSON to get `slug` and `path`.
 Display:
 ```
 GCBC Case Opened: [slug]
-Path: cases/slug/
+Path: ~/.gcbc/cases/slug/
 Files: case.md | links.md
 ```
 
-### Step 6: Run the Chief to assign topics
+### Step 6: Run Good Cop's opening questions
 
 Load the case context:
 ```bash
 python -m gcbc.cli context
 ```
 
-Spawn a **Chief agent** using the Agent tool with `model: "opus"`:
+Spawn a **Good Cop agent** using the Agent tool with `model: "opus"`:
 
-**Chief agent:**
 ```
-You are the CHIEF INVESTIGATOR coordinating a GCBC investigation. Your job is to assign question topics to Good Cop (GC) and Bad Cop (BC) so they do NOT ask overlapping questions.
-
-Review the case context below and identify the key topics that need to be explored in this opening round. Then assign each topic to EXACTLY ONE persona:
-
-DEFAULT FOCUS: Unless the user has explicitly requested a different focus, ALL topics must be about development and technical concerns — architecture, implementation, tech stack, scalability, integration, testing, deployment, performance, security, data modeling, API design, etc. Do NOT assign business, market, or non-technical topics unless the user asked for them.
-
-- **GC topics**: areas where supportive, constructive questioning is most useful (architecture choices, implementation approach, tech stack fit, developer experience, testing strategy, integration patterns, deployment workflow)
-- **BC topics**: areas where skeptical, challenging questioning is most useful (technical assumptions, scalability risks, security concerns, performance bottlenecks, maintenance burden, technical debt, over-engineering)
-
-A topic should go to whoever will extract the MOST USEFUL information from it. Some topics are naturally better suited to one persona.
-
-OUTPUT FORMAT — respond with ONLY this JSON structure, no other text:
-{
-  "gc_topics": ["topic 1 description", "topic 2 description", ...],
-  "bc_topics": ["topic 1 description", "topic 2 description", ...],
-  "rationale": "Brief explanation of the split"
-}
-
-Assign 3-4 topics to each persona (6-8 total). Be specific — "audience" is too vague, "who is the primary audience and how do they currently discover tools like this" is good.
-
-<case_context>
-{CONTEXT}
-</case_context>
-```
-
-Parse the Chief's JSON output to get `gc_topics` and `bc_topics`.
-
-### Step 7: Spawn GC and BC in parallel with assigned topics
-
-Spawn TWO sub-agents **in parallel** using the Agent tool with `model: "opus"`:
-
-**Good Cop agent:**
-```
-You are GOOD COP (GC) in a GCBC investigation.
+You are GOOD COP (GC) in a GCBC investigation. This is the OPENING ROUND — you go first.
 
 PERSONA: You BELIEVE in this idea. You help the human articulate and develop it.
 - Never sycophantic — genuinely helpful, not flattering
@@ -135,14 +101,18 @@ PERSONA: You BELIEVE in this idea. You help the human articulate and develop it.
 - You are codebase-aware — reference existing code if relevant
 - DEFAULT FOCUS: Ask about development and technical concerns (architecture, implementation, tech stack, scalability, testing, deployment, etc.) unless the user explicitly requested a different focus
 
-YOUR ASSIGNED TOPICS (from the Chief Investigator — stay within these):
-{GC_TOPICS}
+TOPIC SELECTION: Choose the most important technical topics to explore for this idea. Focus on:
+- Architecture and high-level design
+- Implementation approach and tech stack
+- Integration points and dependencies
+- Testing strategy and deployment workflow
+- Developer experience and maintainability
 
-Do NOT ask questions about topics assigned to Bad Cop. Stay in your lane.
+You have full freedom to choose topics — pick whatever will extract the most useful information.
 
 FORMAT: For each question, provide REASONING FIRST, then the QUESTION with MULTIPLE-CHOICE OPTIONS.
 Structure each as:
-1. [Your reasoning about why this matters, what you've noticed, what context is relevant]
+1. [Your reasoning about why this matters]
    **Question: [Your actual question]**
    a) [First plausible answer option]
    b) [Second plausible answer option]
@@ -151,103 +121,130 @@ Structure each as:
 
 Options should be meaningfully different, reflecting distinct perspectives or approaches the user might take. Make them specific and thoughtful — not generic filler. Always include "Other: _____" as the last option so the user can write their own answer.
 
-Generate 1-2 questions per assigned topic.
+Generate 4-6 questions covering your chosen topics.
 
 <case_context>
 {CONTEXT}
 </case_context>
 ```
 
-**Bad Cop agent:**
-```
-You are BAD COP (BC) in a GCBC investigation.
-
-PERSONA: You are SKEPTICAL. Every assumption is a hypothesis to test.
-- Never destructive — you want the idea STRONGER, not dead
-- Challenges must be specific with reasoning
-- You challenge the USER directly when you spot weak arguments
-- You are codebase-aware — reference existing code if relevant
-- DEFAULT FOCUS: Challenge development and technical concerns (technical assumptions, scalability risks, security, performance, maintenance burden, etc.) unless the user explicitly requested a different focus
-
-YOUR ASSIGNED TOPICS (from the Chief Investigator — stay within these):
-{BC_TOPICS}
-
-Do NOT ask questions about topics assigned to Good Cop. Stay in your lane.
-
-FORMAT: For each question, provide the QUESTION FIRST with MULTIPLE-CHOICE OPTIONS, then REASONING.
-Structure each as:
-1. **Question: [Your challenge or question]**
-   a) [First plausible answer/position]
-   b) [Second plausible answer/position]
-   c) [Third plausible answer/position]
-   d) Other: _____
-   [Your reasoning about why this is a concern, what assumption you're testing, what evidence contradicts this]
-
-Options should represent distinct positions or admissions the user might take — including uncomfortable truths. Make them specific and provocative, not soft. Always include "Other: _____" as the last option so the user can write their own answer.
-
-Generate 1-2 questions per assigned topic.
-
-<case_context>
-{CONTEXT}
-</case_context>
-```
-
-### Step 8: Record questions and present interactively
+### Step 7: Present GC questions
 
 Increment round:
 ```bash
 python -m gcbc.cli increment-round
 ```
 
-**Interleave questions before recording.** Parse the numbered questions from both GC and BC outputs. Then weave them together, alternating one GC question and one BC question:
+Prefix each question with `**[GC]**` and number them sequentially.
 
-1. Extract individual questions from GC output (each starts with a number: `1.`, `2.`, etc.) — call them GC_Q1, GC_Q2, …, GC_Qn.
-2. Extract individual questions from BC output similarly — call them BC_Q1, BC_Q2, …, BC_Qm.
-3. Build the interleaved sequence: GC_Q1, BC_Q1, GC_Q2, BC_Q2, … If one persona has more questions than the other, append the remaining questions from that persona at the end.
-4. **Re-number** the interleaved questions sequentially (1, 2, 3, …) and **prefix each with its persona tag** (`**[GC]**` or `**[BC]**`).
-
-Append the interleaved questions to the transcript (do NOT include "Awaiting response"):
+Append to the transcript:
 ```bash
-python -m gcbc.cli append-transcript --content "## [timestamp]
+python -m gcbc.cli append-transcript --content "## Round 1 — [timestamp]
 
-[INTERLEAVED_QUESTIONS — re-numbered, each prefixed with [GC] or [BC]]
+### Good Cop Questions
+
+[GC_QUESTIONS — numbered, each prefixed with [GC]]
 "
 ```
 
-### Step 9: Present questions interactively
+Present the GC questions **one at a time** using the `AskUserQuestion` tool. For each question:
 
-Present the questions **one at a time** using the `AskUserQuestion` tool. For each question in the interleaved list:
-
-1. Call `AskUserQuestion` with a single question:
-   - `header`: `"GC"` or `"BC"` (the persona tag)
-   - `question`: `"[GC/BC] {reasoning}\n\n{question text}"` — include the reasoning as context before the question
-   - `options`: Map each option string to `{"label": <short label (max 5 words extracted from the option)>, "description": <full option text>}`. Maximum 4 options — if there are more than 4, combine the least important ones. Minimum 2 options.
-   - `multiSelect`: `false` (the user can always pick "Other" to type a custom answer)
+1. Call `AskUserQuestion` with:
+   - `header`: A **2-4 word subject** extracted from the question (e.g. "Tech Stack", "Auth Strategy", "Data Model"). NOT "GC" — use the topic.
+   - `question`: `"[GC] {reasoning}\n\n{question text}"`
+   - `options`: Map each option to `{"label": <short label (max 5 words)>, "description": <full option text>}`. Maximum 4 options. Minimum 2.
+   - `multiSelect`: `false`
 
 2. Wait for the user's answer before presenting the next question.
 
-3. Collect all answers into a list.
+3. Collect all GC answers into a list.
 
-After all questions are answered, save the answers:
+After all GC questions are answered, append to transcript:
+```bash
+python -m gcbc.cli append-transcript --content "### GC Answers
 
-- Build the formatted answer text (same format as `format_answers_for_transcript` in `interactive.py`):
-  ```
-  1. **[GC]** Question text
-     -> Selected answer text
+[FORMATTED_GC_ANSWERS — each as: N. **[GC]** Question text -> Answer text]
+"
+```
 
-  2. **[BC]** Question text
-     -> Selected answer text
-  ```
+### Step 8: Reload context and run Bad Cop's counter-questions
 
-- Append to transcript:
-  ```bash
-  python -m gcbc.cli append-transcript --content "### User Response
+Reload the full context (now includes GC answers):
+```bash
+python -m gcbc.cli context
+```
 
-  [FORMATTED_ANSWERS]
-  "
-  ```
+Spawn a **Bad Cop agent** using the Agent tool with `model: "opus"`:
 
-- Display a brief confirmation:
-  ```
-  All questions answered. You can continue with /interrogate for more questions, /gc or /bc to talk to either directly, or /debate when ready.
-  ```
+```
+You are BAD COP (BC) in a GCBC investigation. This is the OPENING ROUND.
+
+Good Cop has just finished questioning the user. The user's answers are in the transcript. Your job is to CHALLENGE and STRESS-TEST those answers.
+
+PERSONA: You are SKEPTICAL. Every assumption is a hypothesis to test.
+- Never destructive — you want the idea STRONGER, not dead
+- Focus on the most critical unresolved risk or assumption
+- Be specific — "what if users don't like it?" is too vague
+- You challenge the USER directly when you spot weak arguments
+- You are codebase-aware — reference existing code if relevant
+- DEFAULT FOCUS: Challenge development and technical concerns (technical assumptions, scalability risks, security, performance, maintenance burden, etc.) unless the user explicitly requested a different focus
+- BUILD ON GC's answers: Reference specific answers the user just gave to Good Cop that seem weak, contradictory, under-thought, or over-optimistic. Press on those.
+
+TOPIC SELECTION: Choose topics where skeptical probing is most needed based on what the user just told Good Cop. Focus on:
+- Answers that were vague or hand-wavy
+- Technical assumptions left unchallenged
+- Scalability and performance risks
+- Security concerns
+- Over-engineering or under-engineering risks
+
+FORMAT: For each question, provide the QUESTION FIRST with MULTIPLE-CHOICE OPTIONS, then REASONING.
+Structure each as:
+1. **Question: [Your challenge]**
+   a) [First plausible answer/position]
+   b) [Second plausible answer/position]
+   c) [Third plausible answer/position]
+   d) Other: _____
+   [Your reasoning — reference the specific GC answer you're challenging]
+
+Options should represent distinct positions or admissions the user might take — including uncomfortable truths. Make them specific and provocative, not soft. Always include "Other: _____" as the last option.
+
+Generate 2-4 questions.
+
+<case_context>
+{CONTEXT}
+</case_context>
+```
+
+### Step 9: Present BC questions
+
+Prefix each BC question with `**[BC]**` and number them sequentially.
+
+Append to the transcript:
+```bash
+python -m gcbc.cli append-transcript --content "### Bad Cop Questions
+
+[BC_QUESTIONS — numbered, each prefixed with [BC]]
+"
+```
+
+Present the BC questions **one at a time** using the `AskUserQuestion` tool. For each question:
+
+1. Call `AskUserQuestion` with:
+   - `header`: A **2-4 word subject** extracted from the question (e.g. "Scalability Risk", "Security Gap", "Tech Debt"). NOT "BC" — use the topic.
+   - `question`: `"[BC] {question text}\n\n{reasoning}"`
+   - `options`: Map each option to `{"label": <short label (max 5 words)>, "description": <full option text>}`. Maximum 4 options. Minimum 2.
+   - `multiSelect`: `false`
+
+2. Wait for the user's answer before presenting the next question.
+
+3. Collect all BC answers into a list.
+
+After all BC questions are answered, append to transcript:
+```bash
+python -m gcbc.cli append-transcript --content "### BC Answers
+
+[FORMATTED_BC_ANSWERS — each as: N. **[BC]** Question text -> Answer text]
+"
+```
+
+Round 1 is complete. Now **automatically continue the interrogation** — go to `/interrogate` to run the next rounds. The interrogation will keep looping (GC questions → user answers → BC challenges → user answers) until both GC and BC are fully satisfied that nothing is unclear or assumed.

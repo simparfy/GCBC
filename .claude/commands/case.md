@@ -38,15 +38,16 @@ Then stop.
 
 Read the active case files to count facts and links.
 
-Read `facts.md` from project root and count entries (lines starting with `- `).
-Read `cases/{slug}/links.md` and count links (lines starting with `- [`).
-Check if `cases/{slug}/verdict.md` exists.
+Read `~/.gcbc/facts.md` and count entries (lines starting with `- `).
+Read `~/.gcbc/cases/{slug}/links.md` and count links (lines starting with `- [`).
+Check if `~/.gcbc/cases/{slug}/verdict.md` exists.
 
 Display:
 ```
 GCBC Case: [slug]
 Title: [title]
 Status: [status]
+Rounds: [round_count]
 Facts: [N] non-negotiables (global)
 Links: [N] linked cases
 Verdict: [Written / Not yet written]

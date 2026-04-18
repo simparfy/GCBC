@@ -35,7 +35,7 @@ def _get_internal_dir(case_path: Path) -> Path:
     from . import case as cm
     meta = cm.load_case_meta(case_path)
     slug = meta.get("slug", case_path.name)
-    return cm._internal_case_dir(slug)
+    return cm._case_dir(slug)
 
 
 def load_questions(case_path: Path) -> tuple[int, list[Question]]:
