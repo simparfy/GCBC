@@ -31,7 +31,7 @@ class Question:
 
 
 def _get_internal_dir(case_path: Path) -> Path:
-    """Get the ~/.gcbc/cases/{slug}/ directory for AI-internal files."""
+    """Get the cases/{slug}/ directory for case files."""
     from . import case as cm
     meta = cm.load_case_meta(case_path)
     slug = meta.get("slug", case_path.name)
@@ -39,7 +39,7 @@ def _get_internal_dir(case_path: Path) -> Path:
 
 
 def load_questions(case_path: Path) -> tuple[int, list[Question]]:
-    """Load questions from questions.json in ~/.gcbc/."""
+    """Load questions from questions.json in the case directory."""
     qfile = _get_internal_dir(case_path) / "questions.json"
     if not qfile.exists():
         raise FileNotFoundError("No questions found. Run an interrogation first.")
@@ -50,7 +50,7 @@ def load_questions(case_path: Path) -> tuple[int, list[Question]]:
 
 
 def save_questions(case_path: Path, questions: list[Question], round_num: int) -> Path:
-    """Save questions to questions.json in ~/.gcbc/."""
+    """Save questions to questions.json in the case directory."""
     internal = _get_internal_dir(case_path)
     qfile = internal / "questions.json"
     data = {

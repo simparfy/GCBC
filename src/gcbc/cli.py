@@ -432,12 +432,11 @@ def cmd_uninstall() -> None:
     if res.returncode != 0:
         _err(f"pip uninstall failed: {res.stderr.strip()}")
 
-    data_dir = cm._data_dir()
     _out({
         "uninstalled": True,
         "note": f"The gcbc CLI has been removed. "
-                f"Case data remains in {data_dir}. "
-                f"To fully remove, delete {install_dir} and {data_dir}",
+                f"Case data remains in each project's cases/ directory. "
+                f"To fully remove, delete {install_dir}",
     })
 
 

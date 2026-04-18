@@ -78,7 +78,7 @@ Parse JSON to get `slug` and `path`.
 Display:
 ```
 GCBC Case Opened: [slug]
-Path: ~/.gcbc/cases/slug/
+Path: cases/slug/
 Files: case.md | links.md
 ```
 

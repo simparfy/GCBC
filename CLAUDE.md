@@ -4,13 +4,13 @@ An AI-driven idea investigation framework. Two personas (Good Cop and Bad Cop) i
 
 ## Key Conventions
 
-- All case data lives in `~/.gcbc/cases/{slug}/` — outside the project directory
+- All case data lives in `cases/{slug}/` at the project level
 - Each case directory contains: case.md, links.md, interrogation.md, debate.md, state.json, and optionally verdict.md
 - The Python CLI is at `src/gcbc/cli.py` — call it with `python -m gcbc.cli <command>`
 - Install: `pip install -e .` from repo root
 - All skill files call the Python CLI for file I/O — never write case files directly
 - One active case at a time
-- Facts are global (stored in `~/.gcbc/facts.md`), shared across all cases
+- Facts are global (stored in `facts.md` at project root), shared across all cases
 - Links are bidirectional — linking A to B also links B to A
 
 ## Model Routing

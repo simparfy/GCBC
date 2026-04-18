@@ -25,7 +25,7 @@ Load full context:
 python -m gcbc.cli context
 ```
 
-Also read the global `~/.gcbc/facts.md`.
+Also read the global `facts.md` from the project root.
 
 ### Step 2: Run debate turns
 
@@ -199,7 +199,7 @@ python -m gcbc.cli write-verdict --content "[VERDICT_CONTENT]"
 ```bash
 python -m gcbc.cli increment-debate
 ```
-- Display: "Consensus reached! Verdict written to ~/.gcbc/cases/[slug]/verdict.md"
+- Display: "Consensus reached! Verdict written to cases/[slug]/verdict.md"
 - Show the verdict content
 
 If consensus NOT reached:
