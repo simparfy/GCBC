@@ -11,7 +11,7 @@ python -m gcbc.cli status
 ```
 If no active case, stop with error.
 
-Check if `cases/{slug}/verdict.md` exists. If NOT:
+Check if `.gcbc/cases/{slug}/verdict.md` exists. If NOT:
 ```
 No verdict has been written yet. Run /debate first to have GC and BC reach consensus.
 ```
@@ -21,7 +21,7 @@ Then stop.
 python -m gcbc.cli context
 ```
 
-Also read the global `facts.md` from the project root.
+Also read the global `.gcbc/facts.md`.
 
 ### Step 2: Generate verdict
 
@@ -111,5 +111,5 @@ Confidence: [HIGH / MEDIUM / LOW]
 [Show top risks]
 [Show next steps]
 
-Full verdict written to cases/[slug]/verdict.md
+Full verdict written to .gcbc/cases/[slug]/verdict.md
 ```

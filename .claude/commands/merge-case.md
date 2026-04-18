@@ -97,7 +97,7 @@ LINKS_CONTENT:
 
 Use the agent outputs to rewrite the active case files. Use the Write tool for each file.
 
-**Important:** All case files are stored in `cases/{slug}/`. Use the CLI commands (`append-transcript`, `append-debate`) to write to them.
+**Important:** All case files are stored in `.gcbc/cases/{slug}/`. Use the CLI commands (`append-transcript`, `append-debate`) to write to them.
 
 Update metadata:
 ```bash

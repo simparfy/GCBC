@@ -14,7 +14,7 @@ If no active case: "No open case to close." Then stop.
 
 ### Step 2: Check for verdict
 
-Check if `cases/{slug}/verdict.md` exists by reading it.
+Check if `.gcbc/cases/{slug}/verdict.md` exists by reading it.
 
 If verdict.md does NOT exist:
 ```
@@ -38,6 +38,6 @@ Display:
 ```
 Case closed: [slug] — [title]
 
-Files preserved in cases/[slug]/
+Files preserved in .gcbc/cases/[slug]/
 Reopen with: /reopen-case [slug]
 ```

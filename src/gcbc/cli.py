@@ -435,7 +435,7 @@ def cmd_uninstall() -> None:
     _out({
         "uninstalled": True,
         "note": f"The gcbc CLI has been removed. "
-                f"Case data remains in each project's cases/ directory. "
+                f"Case data remains in each project's .gcbc/ directory. "
                 f"To fully remove, delete {install_dir}",
     })
 

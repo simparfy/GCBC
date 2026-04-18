@@ -62,19 +62,24 @@ def _write_frontmatter(path: Path, meta: dict, body: str) -> None:
     path.write_text(f"---\n{fm}---{body}", encoding="utf-8")
 
 
+def _data_dir() -> Path:
+    """Return {project}/.gcbc/ — the root for all GCBC data within the project."""
+    return _project_root() / ".gcbc"
+
+
 def _cases_dir(project_root: Path | None = None) -> Path:
-    """Resolve cases directory. All cases live in {project}/cases/."""
+    """Resolve cases directory. All cases live in {project}/.gcbc/cases/."""
     import os
     env = os.environ.get("GCBC_CASES_DIR")
     if env:
         return Path(env)
     if project_root:
-        return project_root / "cases"
-    return _project_root() / "cases"
+        return project_root / ".gcbc" / "cases"
+    return _data_dir() / "cases"
 
 
 def _case_dir(slug: str) -> Path:
-    """Return {project}/cases/{slug}/, creating it if needed."""
+    """Return {project}/.gcbc/cases/{slug}/, creating it if needed."""
     d = _cases_dir() / slug
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -90,7 +95,7 @@ def _project_root() -> Path:
 
 
 def _load_internal_state(slug: str) -> dict:
-    """Load internal state from cases/{slug}/state.json."""
+    """Load internal state from .gcbc/cases/{slug}/state.json."""
     defaults = {
         "round_count": 0,
         "debate_attempts": 0,
@@ -106,7 +111,7 @@ def _load_internal_state(slug: str) -> dict:
 
 
 def _save_internal_state(slug: str, state: dict) -> None:
-    """Save internal state to cases/{slug}/state.json."""
+    """Save internal state to .gcbc/cases/{slug}/state.json."""
     state_file = _case_dir(slug) / "state.json"
     state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
@@ -288,8 +293,10 @@ def append_to_debate(case_path: Path, content: str) -> None:
 
 
 def append_fact(project_root: Path, statement: str) -> tuple[bool, str]:
-    """Append a fact to the global facts.md at project root. Returns (added, reason)."""
-    facts_file = project_root / "facts.md"
+    """Append a fact to the global facts.md in {project}/.gcbc/. Returns (added, reason)."""
+    data_dir = _data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    facts_file = data_dir / "facts.md"
 
     if not facts_file.exists():
         facts_file.write_text(templates.facts_md(), encoding="utf-8")
@@ -358,15 +365,15 @@ def read_full_case_context(case_path: Path) -> str:
     """Read all case files into a single tagged context string."""
     parts = []
 
-    # All case files live in {project}/cases/{slug}/
+    # All case files live in {project}/.gcbc/cases/{slug}/
     for filename in ["case.md", "links.md", "verdict.md", "interrogation.md", "debate.md"]:
         f = case_path / filename
         if f.exists():
             content = f.read_text(encoding="utf-8")
             parts.append(f'<file name="{filename}">\n{content}\n</file>')
 
-    # Include global facts from project root
-    facts_file = _project_root() / "facts.md"
+    # Include global facts from {project}/.gcbc/facts.md
+    facts_file = _data_dir() / "facts.md"
     if facts_file.exists():
         content = facts_file.read_text(encoding="utf-8")
         parts.append(f'<file name="facts.md" scope="global">\n{content}\n</file>')
